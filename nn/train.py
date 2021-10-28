@@ -1,15 +1,11 @@
 # should run on any dataset like the mnist set?
 # training script
 import torch as t
-from torch import functional
 import torchvision as tv
 from torchvision import transforms
 from torch.utils.data import DataLoader, random_split
 from torch.optim.adam import Adam
 from torch.nn import CrossEntropyLoss
-from torchvision.transforms.functional import invert
-from torchvision.transforms.transforms import Grayscale
-from tqdm.std import trange
 from model import CovNet
 from tqdm import tqdm
 
@@ -32,8 +28,12 @@ def train(model, device, train_loader, val_loader, loss_fn, optim, n_epoch, lear
             l.backward()
             optim.step()
 
-        val_accuracy = evaluate(model, data_loader=val_loader, device=device)
         train_acc = evaluate(model, data_loader=train_loader, device=device)
+        if val_loader is not None:
+            val_accuracy = evaluate(
+                model, data_loader=val_loader, device=device)
+        else:
+            val_accuracy = None
 
         pbar.set_description(
             f'For epoch number {epoch}, Training Acc: {train_acc}, Validation Acc: {val_accuracy} Loss: {l}')
@@ -70,7 +70,6 @@ if __name__ == "__main__":
     # Load train images into dataset
     transformer = transforms.Compose([
         transforms.Grayscale(num_output_channels=1),
-        # this does assume the size is
         transforms.Resize(28),
         transforms.ToTensor(),
         transforms.Normalize((0.5), (0.5))
@@ -80,15 +79,15 @@ if __name__ == "__main__":
         train_images_dir, transform=transformer)
     label_map = train_set.class_to_idx
 
-    val_size = 0.1
     # train validation split
+    val_size = 0.1
     n_val_examples = round(len(train_set)*val_size)
     n_train_examples = len(train_set)-n_val_examples
-    train_set, val_set = random_split(
-        train_set, [n_train_examples, n_val_examples])
+    # train_set, val_set = random_split(
+    #    train_set, [n_train_examples, n_val_examples])
 
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=True)
+    #val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=True)
 
     # Define net and p
     model = CovNet()
@@ -99,6 +98,6 @@ if __name__ == "__main__":
     optim = Adam
 
     # train loader and model to device
-    train(model=model, train_loader=train_loader, val_loader=val_loader,
-          loss_fn=loss_fn, optim=optim, n_epoch=n_epoch, device=device,
-          learning_rate=learning_rate)
+    model = train(model=model, train_loader=train_loader, val_loader=None,
+                  loss_fn=loss_fn, optim=optim, n_epoch=n_epoch, device=device,
+                  learning_rate=learning_rate)

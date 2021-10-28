@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "kafka_pubsub"
+version = "0.1.0"
+description = ""
+authors = ["Charles H J Pearce <charleshjpearce@Charless-MacBook-Pro.local>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+kafka-python = "^2.0.2"
+google-cloud-pubsub = "^2.8.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

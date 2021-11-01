@@ -11,4 +11,5 @@ class Google:
 @dataclass
 class Kafka:
     topic: str
-    bootstrap_server: str
+    bootstrap_servers: str
+    group_id: str

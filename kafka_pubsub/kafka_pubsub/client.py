@@ -10,19 +10,25 @@ class ProducerClient:
 
         if self.service_type == Google:
             self.publisher = pubsub_v1.PublisherClient()
+
         elif self.service_type == Kafka:
-            self.publisher = KafkaProducer(service.bootstrap_server)
+            self.publisher = KafkaProducer(
+                bootstrap_servers=service.bootstrap_server)
         else:
             raise ValueError('Invalid Service')
 
-    def send(self, message):
+    def send(self, message, **other_payload):
         if self.service_type == Google:
-            future = self.publisher.publish(self.service.topic, message)
+            future = self.publisher.publish(
+                self.service.topic, message, **other_payload)
             id = future.result()
             print(f'Message published {id}')
 
         elif self.service_type == Kafka:
-            self.publisher.send(self.service.topic, message)
+            future = self.publisher.send(
+                self.service.topic, message, **other_payload)
+            result = future.get(timeout=60)
+            print(result)
 
 
 class ConsumerClient:
@@ -48,9 +54,14 @@ class ConsumerClient:
                 future.cancel()
 
     def _k_consume(self):
-        consumer = KafkaConsumer(bootstrap_servers=self.service.topic)
+        consumer = KafkaConsumer(
+            self.service.topic,
+            bootstrap_servers=self.service.bootstrap_servers,
+            group_id=self.service.group_id,
+        )
+
         for msg in consumer:
-            self.callback_fn(msg)
+            self.callback_fn(msg.value)
 
     def consume(self):
         if type(self.service) == Google:

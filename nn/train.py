@@ -1,6 +1,7 @@
 # should run on any dataset like the mnist set?
 # training script
 import torch as t
+from torch.nn.modules import loss
 import torchvision as tv
 from torchvision import transforms
 from torch.utils.data import DataLoader, random_split
@@ -11,6 +12,7 @@ from tqdm import tqdm
 
 
 def train(model, device, train_loader, val_loader, loss_fn, optim, n_epoch, learning_rate):
+    loss_fn = loss_fn()
     optim = optim(model.parameters(), lr=learning_rate)
     pbar = tqdm(total=n_epoch)
 
@@ -29,6 +31,7 @@ def train(model, device, train_loader, val_loader, loss_fn, optim, n_epoch, lear
             optim.step()
 
         train_acc = evaluate(model, data_loader=train_loader, device=device)
+
         if val_loader is not None:
             val_accuracy = evaluate(
                 model, data_loader=val_loader, device=device)
@@ -36,13 +39,15 @@ def train(model, device, train_loader, val_loader, loss_fn, optim, n_epoch, lear
             val_accuracy = None
 
         pbar.set_description(
-            f'For epoch number {epoch}, Training Acc: {train_acc}, Validation Acc: {val_accuracy} Loss: {l}')
+            f'For epoch number {epoch+1}, Training Acc: {train_acc}, Validation Acc: {val_accuracy} Loss: {l}')
         pbar.update()
 
-    return model
+    return model, val_accuracy
 
 
 def evaluate(model, device, data_loader):
+    model.eval()
+
     with t.no_grad():
         # eval on val_loader
         n_correct = 0
@@ -61,43 +66,38 @@ def evaluate(model, device, data_loader):
 
 if __name__ == "__main__":
     train_images_dir = './data/train/png/'
+    image_resize_shape = (28, 28)
 
     # Hyperparameters
-    n_epoch = 10
-    batch_size = 1000
-    learning_rate = 0.001
+    n_epoch = 15
+    batch_size = 100
+    learning_rate = 0.01
 
     # Load train images into dataset
     transformer = transforms.Compose([
         transforms.Grayscale(num_output_channels=1),
-        transforms.Resize(28),
+        transforms.Resize(image_resize_shape),
         transforms.ToTensor(),
         transforms.Normalize((0.5), (0.5))
     ])
 
     train_set = tv.datasets.ImageFolder(
         train_images_dir, transform=transformer)
-    label_map = train_set.class_to_idx
-
-    # train validation split
-    val_size = 0.1
-    n_val_examples = round(len(train_set)*val_size)
-    n_train_examples = len(train_set)-n_val_examples
-    # train_set, val_set = random_split(
-    #    train_set, [n_train_examples, n_val_examples])
 
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
-    #val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=True)
 
-    # Define net and p
-    model = CovNet()
+    # Define net
+    model = CovNet(image_size=image_resize_shape)
     device = t.device('cuda' if t.cuda.is_available() else 'cpu')
     model = model.to(device)
 
-    loss_fn = CrossEntropyLoss()
+    loss_fn = CrossEntropyLoss
     optim = Adam
 
     # train loader and model to device
-    model = train(model=model, train_loader=train_loader, val_loader=None,
-                  loss_fn=loss_fn, optim=optim, n_epoch=n_epoch, device=device,
-                  learning_rate=learning_rate)
+    model, _ = train(model=model, train_loader=train_loader, val_loader=None,
+                     loss_fn=loss_fn, optim=optim, n_epoch=n_epoch, device=device,
+                     learning_rate=learning_rate)
+
+    model_save_path = './models/fashion_mnst_cnn.bin'
+    t.save(model.state_dict(), model_save_path)

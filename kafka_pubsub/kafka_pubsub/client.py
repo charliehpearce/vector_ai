@@ -1,19 +1,20 @@
 from google.cloud import pubsub_v1
 from kafka import KafkaProducer, KafkaConsumer
-from services import Google, Kafka
+from .services import Google, Kafka
 
 
 class ProducerClient:
     def __init__(self, service) -> None:
         self.service = service
         self.service_type = type(service)
+        print(service)
 
         if self.service_type == Google:
             self.publisher = pubsub_v1.PublisherClient()
 
         elif self.service_type == Kafka:
             self.publisher = KafkaProducer(
-                bootstrap_servers=service.bootstrap_server)
+                bootstrap_servers=service.bootstrap_servers)
         else:
             raise ValueError('Invalid Service')
 
@@ -35,6 +36,7 @@ class ConsumerClient:
     def __init__(self, service, callback_fn) -> None:
         self.callback_fn = callback_fn
         self.service = service
+        print(service)
 
     def _g_callback(self, message):
         try:
@@ -58,10 +60,15 @@ class ConsumerClient:
             self.service.topic,
             bootstrap_servers=self.service.bootstrap_servers,
             group_id=self.service.group_id,
+            enable_auto_commit=False
         )
 
         for msg in consumer:
-            self.callback_fn(msg.value)
+            try:
+                self.callback_fn(msg.value)
+                consumer.commit()
+            except Exception as e:
+                print(e)
 
     def consume(self):
         if type(self.service) == Google:

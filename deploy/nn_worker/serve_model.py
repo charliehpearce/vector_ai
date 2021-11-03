@@ -36,11 +36,8 @@ def get_prediction(img_bytes, image_resize_shape):
         transforms.Normalize((0.5), (0.5))
     ])
     # Read bytes image bytes and process into tensor
-    print('opening bytes', flush=True)
     img = Image.open(io.BytesIO(img_bytes))
-    print('turning into tensor', flush=True)
     img_tensor = transformer(img).unsqueeze(0)
-    print('generting prediction', flush=True)
     outputs = model.forward(img_tensor)
     _, y_hat = outputs.max(1)
     return y_hat.item()
@@ -66,11 +63,9 @@ def process_image(img_bytes):
                           image_resize_shape=image_resize_shape)
     print(pred)
     # Send to producer
-    print('sending to results queue', flush=True)
     producer.send(bytes(str(pred), 'utf-8'))
 
 
-print('Consuming picture', flush=True)
 # Open consumer client and consume
 consumer = ConsumerClient(consume_service, callback_fn=process_image)
 consumer.consume()
